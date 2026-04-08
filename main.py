@@ -1,6 +1,8 @@
-def main():
-    print("Hello from acessflow!")
+from  fastapi import FastAPI
 
-
-if __name__ == "__main__":
-    main()
+app=FastAPI()
+@app.get('/home')
+def get_home():
+    return{
+        "status":"ok"
+    }
