@@ -1,9 +1,13 @@
 from fastapi import FastAPI
 from datetime import datetime, timezone
 
-from app.routes import upload
+from app.routes.upload import router as upload_router
 
-app = FastAPI()
+app = FastAPI(
+    title="AcessFlow",
+    description="Learning backend system for deployment and system behavior",
+    version="0.1.0"
+)
 
 
 @app.get("/")
@@ -16,4 +20,5 @@ def health_check():
     }
 
 
-app.include_router(upload.router)
+# Include routes
+app.include_router(upload_router)
