@@ -1,18 +1,22 @@
 from app.storage.local import LocalStorage
+from app.core.logger import get_logger
 
 storage = LocalStorage()
+logger = get_logger("file_service")
 
 
 def handle_upload(file_bytes, filename):
-    print(f"⚙️ Service: handling file -> {filename}")
+    logger.info(f"Handling file: {filename}")
 
     try:
         path = storage.save(file_bytes, filename)
 
-        print(f"✅ Service: file saved at {path}")
-
+        logger.info(f"File saved successfully: {path}")
         return path
 
     except Exception as e:
-        print(f"❌ Service error: {str(e)}")
-        raise e
+        logger.error(
+            f"Service error while handling {filename}: {str(e)}",
+            exc_info=True
+        )
+        raise

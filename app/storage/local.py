@@ -1,11 +1,13 @@
 import os
+from app.core.logger import get_logger
 
 UPLOAD_DIR = "uploads"
+logger = get_logger("local_storage")
 
 
 class LocalStorage:
     def save(self, file_bytes, filename):
-        print(f"💾 Storage: saving {filename}")
+        logger.info(f"Saving file: {filename}")
 
         os.makedirs(UPLOAD_DIR, exist_ok=True)
 
@@ -14,6 +16,6 @@ class LocalStorage:
         with open(file_path, "wb") as f:
             f.write(file_bytes)
 
-        print(f"📦 Storage: saved at {file_path}")
+        logger.info(f"File stored at: {file_path}")
 
         return file_path
