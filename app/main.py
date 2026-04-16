@@ -5,6 +5,7 @@ from app.core.logger import get_logger
 from app.core.exceptions import AppException
 from app.core.middleware import RequestLoggingMiddleware
 from fastapi.responses import JSONResponse
+from app.core.lifespan import lifespan
 
 logger = get_logger("main")
 
@@ -12,6 +13,7 @@ app = FastAPI(
     title="AcessFlow",
     description="Learning backend system for deployment and system behavior",
     version="0.1.0",
+    lifespan=lifespan
 )
 app.add_middleware(RequestLoggingMiddleware)
 
