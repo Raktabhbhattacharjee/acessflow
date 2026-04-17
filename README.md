@@ -2,9 +2,9 @@
 
 [![Python 3.13+](https://img.shields.io/badge/python-3.13%2B-blue?logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/fastapi-0.135+-green?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Docker](https://img.shields.io/badge/docker-ready-blue?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Docker](https://img.shields.io/badge/docker-included-blue?logo=docker&logoColor=white)](https://www.docker.com/)
 
-A production-ready backend learning project demonstrating clean FastAPI architecture, structured observability, and cloud readiness. Built to master real-world patterns: middleware, dependency injection, abstract storage backends, and containerization.
+A backend learning project demonstrating clean FastAPI architecture, structured observability, and cloud-ready patterns. Built to explore real-world engineering practices: middleware, dependency injection, abstract storage backends, and containerization.
 
 ## Overview
 
@@ -27,7 +27,7 @@ AccessFlow is **not a feature-heavy application**—it's a deliberate study in a
 | **Framework**       | FastAPI                 | Async, Pydantic validation, auto docs        |
 | **Config**          | pydantic-settings       | Type-safe env vars, .env support             |
 | **Package Manager** | uv                      | Fast, deterministic, Python 3.13 native      |
-| **Container**       | Docker (multi-stage)    | Lightweight, non-root user, production-grade |
+| **Container**       | Docker (multi-stage)    | Lightweight, non-root user, optimized image |
 | **Storage**         | Local (pluggable to S3) | No vendor lock-in, easy to extend            |
 
 ## Architecture
