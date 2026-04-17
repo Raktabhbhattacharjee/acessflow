@@ -14,7 +14,7 @@ app = FastAPI(
     title="AcessFlow",
     description="Learning backend system for deployment and system behavior",
     version="0.1.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 app.add_middleware(RequestLoggingMiddleware)
@@ -24,6 +24,15 @@ app.add_middleware(RequestLoggingMiddleware)
 async def app_exception_handler(request: Request, exc: AppException):
     logger.warning(f"Handled AppException: {exc.message}")
     return JSONResponse(status_code=400, content=error_response(exc.message))
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Catch any unexpected exceptions"""
+    logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+    return JSONResponse(
+        status_code=500, content=error_response("Internal server error")
+    )
 
 
 app.include_router(upload_router)
