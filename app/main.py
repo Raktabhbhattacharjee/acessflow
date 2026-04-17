@@ -6,6 +6,7 @@ from app.core.exceptions import AppException
 from app.core.middleware import RequestLoggingMiddleware
 from fastapi.responses import JSONResponse
 from app.core.lifespan import lifespan
+from app.core.responses import error_response
 
 logger = get_logger("main")
 
@@ -15,17 +16,14 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan
 )
+
 app.add_middleware(RequestLoggingMiddleware)
 
 
-# ✅ Global Exception Handler
 @app.exception_handler(AppException)
 async def app_exception_handler(request: Request, exc: AppException):
     logger.warning(f"Handled AppException: {exc.message}")
-
-    return JSONResponse(
-        status_code=400, content={"status": "error", "message": exc.message}
-    )
+    return JSONResponse(status_code=400, content=error_response(exc.message))
 
 
 app.include_router(upload_router)
