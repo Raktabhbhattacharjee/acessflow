@@ -30,8 +30,7 @@ class S3Storage(StorageBackend):
                 Key=object_key,
                 Body=file_bytes,
             )
-
             return object_key
 
         except ClientError as error:
-            raise RuntimeError(f"Failed to upload file to S3: {error}") from error
+            raise RuntimeError("Failed to upload file to S3") from error

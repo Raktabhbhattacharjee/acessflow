@@ -12,20 +12,12 @@ def get_settings() -> Settings:
 
 
 def get_storage(config: Settings = Depends(get_settings)) -> StorageBackend:
-    """
-    Return the configured storage backend.
+    storage_backend = config.storage_backend.lower()
 
-    Currently supported:
-    - local: stores uploaded files on disk
-    - s3: uploads files to Amazon S3
-
-    Raises:
-        ValueError: if an unsupported storage backend is configured.
-    """
-    if config.storage_backend == "local":
+    if storage_backend == "local":
         return LocalStorage(config.storage_path)
 
-    if config.storage_backend == "s3":
+    if storage_backend == "s3":
         return S3Storage(
             bucket_name=config.s3_bucket_name,
             region_name=config.aws_region,
