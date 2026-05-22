@@ -11,12 +11,15 @@ class LocalStorage(StorageBackend):
 
     async def save(self, file_bytes: bytes, filename: str) -> str:
         logger.info(f"Saving file: {filename}")
+
         os.makedirs(self.storage_path, exist_ok=True)
+
         file_path = os.path.join(self.storage_path, filename)
+
         with open(file_path, "wb") as f:
             f.write(file_bytes)
-        logger.info(f"File stored at: {file_path}")
-        return file_path
+
+        return f"uploads/{filename}"
 
     def ensure_directory(self) -> None:
         os.makedirs(self.storage_path, exist_ok=True)

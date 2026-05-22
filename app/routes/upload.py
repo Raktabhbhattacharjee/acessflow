@@ -20,7 +20,8 @@ async def upload_file(
     validate_file(file)
 
     file_bytes = await file.read()
-
+    size_bytes = len(file_bytes)
+    content_type = file.content_type
     storage_reference = await storage.save(file_bytes, file.filename)
 
     logger.info(f"Upload successful: {file.filename} → {storage_reference}")
@@ -30,5 +31,7 @@ async def upload_file(
             "filename": file.filename,
             "storage_backend": settings.storage_backend,
             "storage_reference": storage_reference,
+            "size_bytes": size_bytes,
+            "content_type": content_type,
         }
     )
