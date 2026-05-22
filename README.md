@@ -1,15 +1,17 @@
 # AccessFlow
 
-FastAPI file upload pipeline with pluggable storage backends (local or AWS S3).
+A backend architecture project for file ingestion with pluggable storage backends (local or AWS S3).
 
-## Architecture
+**Focus:** Clean separation of responsibilities, configuration-driven backends, and testable design.
+
+## Architecture Overview
 
 ```mermaid
 flowchart TD
     A[User uploads file] --> B[FastAPI /upload/ route]
     B --> C[FileValidator]
     C --> D[get_storage]
-    D --> E{STORAGE_BACKEND}
+    D --> E{STORAGE_BACKEND<br/>config}
     E -->|local| F[LocalStorage]
     E -->|s3| G[S3Storage]
     F --> H[Save to ./uploads]
@@ -19,19 +21,21 @@ flowchart TD
     J --> K[API success response]
 ```
 
-**Core principle:** The upload route depends on the abstract `StorageBackend` interface, not concrete implementations. Storage choice is configuration-driven.
+**Design principle:** The upload route depends on the abstract `StorageBackend` interface, not concrete implementations. Storage choice is configuration-driven and decoupled from business logic.
 
 ## Components
 
-| Component                  | Purpose                                           |
-| -------------------------- | ------------------------------------------------- |
-| `POST /upload/`            | File upload endpoint with validation              |
-| `GET /health`              | Health check for load balancers                   |
-| `FileValidator`            | Extension, name, and size validation              |
-| `StorageBackend`           | Abstract interface for storage implementations    |
-| `LocalStorage`             | Saves files to `./uploads`                        |
-| `S3Storage`                | Uploads files to AWS S3                           |
-| `RequestLoggingMiddleware` | Logs request_id and latency_ms in structured JSON |
+| Component                  | Responsibility                                  |
+| -------------------------- | ----------------------------------------------- |
+| `POST /upload/`            | Coordinate upload flow (validation + storage)   |
+| `GET /health`              | Health check for load balancers                 |
+| `FileValidator`            | Validate file extension, name, and size         |
+| `StorageBackend`           | Abstract interface for storage implementations  |
+| `LocalStorage`             | **Local backend:** Save files to `./uploads`    |
+| `S3Storage`                | **S3 backend:** Upload files to AWS S3          |
+| `RequestLoggingMiddleware` | Log all requests with request_id and latency_ms |
+
+**Key:** S3-specific logic stays in `S3Storage`, local file logic stays in `LocalStorage`. The upload route never knows which backend is active—it just calls `storage.save()`. Selection happens in `get_storage()`.
 
 ## Project Structure
 
@@ -133,12 +137,15 @@ curl.exe -X POST "http://127.0.0.1:8000/upload/" -F "file=@test.txt"
 
 ```json
 {
-  "success": true,
+  "status": "success",
   "data": {
     "filename": "test.txt",
     "storage_backend": "local",
-    "storage_reference": "uploads/test.txt"
-  }
+    "storage_reference": "uploads/test.txt",
+    "size_bytes": 38,
+    "content_type": "text/plain"
+  },
+  "error": null
 }
 ```
 
@@ -162,12 +169,15 @@ curl.exe -X POST "http://127.0.0.1:8000/upload/" -F "file=@test.txt"
 
 ```json
 {
-  "success": true,
+  "status": "success",
   "data": {
     "filename": "test.txt",
     "storage_backend": "s3",
-    "storage_reference": "uploads/550e8400-e29b-41d4-a716-446655440000.txt"
-  }
+    "storage_reference": "uploads/550e8400-e29b-41d4-a716-446655440000.txt",
+    "size_bytes": 38,
+    "content_type": "text/plain"
+  },
+  "error": null
 }
 ```
 
@@ -183,6 +193,34 @@ The upload endpoint **requires** a trailing slash: `/upload/`
 
 Correct: `http://127.0.0.1:8000/upload/`
 Incorrect: `http://127.0.0.1:8000/upload` (causes 307 redirect)
+
+## Response Format
+
+All responses follow this envelope:
+
+```json
+{
+  "status": "success",
+  "data": {
+    "filename": "test.txt",
+    "storage_backend": "local",
+    "storage_reference": "uploads/test.txt",
+    "size_bytes": 1024,
+    "content_type": "text/plain"
+  },
+  "error": null
+}
+```
+
+On error:
+
+```json
+{
+  "status": "error",
+  "data": null,
+  "error": "File size exceeds maximum of 100 MB"
+}
+```
 
 ## S3 Bucket Scripts
 
@@ -236,13 +274,40 @@ uv run pytest tests/ --cov=app --cov-report=term-missing
 
 Tests use dependency injection to inject mock storage, preventing file I/O and S3 calls during testing.
 
-## Design
+## Storage Backend Design
 
-- **Dependency Injection:** `get_storage()` returns the configured storage backend
-- **Abstract Interface:** `StorageBackend` defines the `save(file_bytes, filename)` contract
-- **Configuration-Driven:** `STORAGE_BACKEND` environment variable selects backend at runtime
-- **Structured Logging:** All requests logged with `request_id`, `latency_ms`, `level`, `message`
-- **Testability:** Fixtures in `conftest.py` allow injecting mock storage for tests
+### How It Works
+
+**Dependency Injection:** `get_storage()` returns the active `StorageBackend` based on `STORAGE_BACKEND` env var.
+
+```python
+# upload.py never knows which backend is active
+storage = get_storage()  # Returns LocalStorage or S3Storage
+reference = storage.save(file_bytes, filename)
+```
+
+### Local vs S3 Mode
+
+| Aspect                | Local                               | S3                                                   |
+| --------------------- | ----------------------------------- | ---------------------------------------------------- |
+| **Backend selection** | `STORAGE_BACKEND=local`             | `STORAGE_BACKEND=s3`                                 |
+| **File saved to**     | `./uploads/` directory              | AWS S3 bucket                                        |
+| **Storage reference** | `uploads/filename.txt`              | `uploads/uuid-filename.txt` (renamed for uniqueness) |
+| **Use case**          | Development, testing, single-server | Production, multi-region, shared infrastructure      |
+| **Logic location**    | `app/storage/local.py`              | `app/storage/s3.py`                                  |
+
+### Separation of Concerns
+
+- **`upload.py`** — Orchestrates the upload flow. Calls `validate_file()`, `get_storage()`, and `storage.save()`. Never has S3-specific logic.
+- **`local.py`** — All local file handling: opening directories, writing files, generating references.
+- **`s3.py`** — All S3-specific logic: bucket operations, client configuration, UUID generation, S3 API calls.
+- **`get_storage()`** — The only place that decides which backend to use. Changes to this function are the only reason to edit `dependencies.py`.
+
+This design makes it easy to:
+
+- Add a new backend (e.g., Azure Blob) without touching `upload.py`
+- Test the upload route with mock storage
+- Swap backends by changing one environment variable
 
 ## Security Notes
 
