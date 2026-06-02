@@ -37,3 +37,7 @@ def test_dangerous_extension():
         validate_file(file)
 
 
+def test_zero_byte_file():
+    file=FakeUploadFile(filename="empty.txt",content_type="text/plain")
+    with pytest.raises(AppException):
+        validate_file(file,size_bytes=0)
