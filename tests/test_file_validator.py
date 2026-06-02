@@ -41,3 +41,9 @@ def test_zero_byte_file():
     file=FakeUploadFile(filename="empty.txt",content_type="text/plain")
     with pytest.raises(AppException):
         validate_file(file,size_bytes=0)
+
+def test_oversized_file():
+    file = FakeUploadFile(filename="big.txt", content_type="text/plain")
+
+    with pytest.raises(AppException):
+        validate_file(file, size_bytes=6 * 1024 * 1024)

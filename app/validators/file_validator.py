@@ -1,7 +1,7 @@
 from app.core.exceptions import AppException
 
 DANGEROUS_EXTENSIONS = [".exe", ".js", ".bat", ".cmd", ".sh"]
-
+MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024
 
 def validate_file(file, size_bytes=None):
 
@@ -20,4 +20,6 @@ def validate_file(file, size_bytes=None):
     if size_bytes == 0:
         raise AppException("Invalid file: empty file")
 
+    if size_bytes is not None and size_bytes > MAX_FILE_SIZE_BYTES:
+        raise AppException('Invalid file: file too large')
     return True
