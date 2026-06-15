@@ -17,8 +17,8 @@ class FakeStorage:
 
     def __init__(self):
         self.save_called = False
-        self.save_filename=None
-        self.save_bytes=None
+        self.saved_filename = None
+        self.saved_bytes = None
 
     async def save(self, file_bytes, filename):
         """
@@ -36,16 +36,9 @@ class FakeStorage:
 def test_invalid_upload():
     """
     Invalid uploads should be rejected before storage is touched.
-
-    This test replaces the real storage dependency with FakeStorage,
-    uploads a dangerous .exe file, and checks two things:
-
-    1. The API returns 400 Bad Request.
-    2. FakeStorage.save() was never called.
     """
     fake_storage = FakeStorage()
 
-    # Replace real get_storage() with a test version that returns FakeStorage.
     app.dependency_overrides[get_storage] = lambda: fake_storage
 
     client = TestClient(app)
@@ -55,13 +48,12 @@ def test_invalid_upload():
         files={
             "file": (
                 "virus.exe",
-                "fake file content",
+                b"fake file content",
                 "text/plain",
             )
         },
     )
 
-    # Clean up dependency override so it does not affect other tests.
     app.dependency_overrides.clear()
 
     assert response.status_code == 400
@@ -90,6 +82,7 @@ def test_empty_upload():
 
     assert response.status_code == 400
     assert fake_storage.save_called is False
+
 
 def test_valid_upload():
     fake_storage = FakeStorage()
