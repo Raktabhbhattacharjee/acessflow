@@ -21,6 +21,7 @@ async def upload_file(
 
     file_bytes = await file.read()
     size_bytes = len(file_bytes)
+    validate_file(file,size_bytes=size_bytes)
     content_type = file.content_type
     storage_reference = await storage.save(file_bytes, file.filename)
 
