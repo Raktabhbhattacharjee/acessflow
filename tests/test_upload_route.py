@@ -17,6 +17,8 @@ class FakeStorage:
 
     def __init__(self):
         self.save_called = False
+        self.save_filename=None
+        self.save_bytes=None
 
     async def save(self, file_bytes, filename):
         """
@@ -26,6 +28,8 @@ class FakeStorage:
         For invalid files, this should NOT happen.
         """
         self.save_called = True
+        self.saved_filename = filename
+        self.saved_bytes = file_bytes
         return f"fake/{filename}"
 
 
@@ -86,3 +90,28 @@ def test_empty_upload():
 
     assert response.status_code == 400
     assert fake_storage.save_called is False
+
+def test_valid_upload():
+    fake_storage = FakeStorage()
+
+    app.dependency_overrides[get_storage] = lambda: fake_storage
+
+    client = TestClient(app)
+
+    response = client.post(
+        "/upload/",
+        files={
+            "file": (
+                "notes.txt",
+                b"hello accessflow",
+                "text/plain",
+            )
+        },
+    )
+
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert fake_storage.save_called is True
+    assert fake_storage.saved_filename == "notes.txt"
+    assert fake_storage.saved_bytes == b"hello accessflow"
