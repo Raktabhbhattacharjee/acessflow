@@ -46,7 +46,7 @@ def fake_storage():
 
 @pytest.fixture
 def client():
-    return TestClient(app)
+    return TestClient(app,raise_server_exceptions=False)
 
 
 def test_invalid_upload(client, fake_storage):
@@ -122,3 +122,35 @@ def test_large_upload(client, fake_storage):
 
     assert response.status_code == 400
     assert fake_storage.save_called is False
+
+
+class BrokenStorage:
+    async def save(self, file_bytes, filename):
+        raise RuntimeError("storage is down")
+
+
+def test_storage_failure(client):
+    broken_storage = BrokenStorage()
+
+    app.dependency_overrides[get_storage] = lambda: broken_storage
+
+    response = client.post(
+        "/upload/",
+        files={
+            "file": (
+                "notes.txt",
+                b"hello accessflow",
+                "text/plain",
+            )
+        },
+    )
+
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 500
+
+    data = response.json()
+
+    assert data["status"] == "error"
+    assert data["data"] is None
+    assert data["error"] == "Internal server error"
