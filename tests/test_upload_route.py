@@ -108,3 +108,27 @@ def test_valid_upload():
     assert fake_storage.save_called is True
     assert fake_storage.saved_filename == "notes.txt"
     assert fake_storage.saved_bytes == b"hello accessflow"
+
+
+def test_large_upload():
+    fake_storage = FakeStorage()
+
+    app.dependency_overrides[get_storage] = lambda: fake_storage
+
+    client = TestClient(app)
+
+    response = client.post(
+        "/upload/",
+        files={
+            "file": (
+                "big.txt",
+                b"x" * (6 * 1024 * 1024),
+                "text/plain",
+            )
+        },
+    )
+
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 400
+    assert fake_storage.save_called is False
