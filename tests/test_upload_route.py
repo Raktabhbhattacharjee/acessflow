@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -25,7 +26,6 @@ class FakeStorage:
         Fake version of storage.save().
 
         If this method runs, it means the upload route reached the storage step.
-        For invalid files, this should NOT happen.
         """
         self.save_called = True
         self.saved_filename = filename
@@ -33,16 +33,23 @@ class FakeStorage:
         return f"fake/{filename}"
 
 
-def test_invalid_upload():
-    """
-    Invalid uploads should be rejected before storage is touched.
-    """
-    fake_storage = FakeStorage()
+@pytest.fixture
+def fake_storage():
+    storage = FakeStorage()
 
-    app.dependency_overrides[get_storage] = lambda: fake_storage
+    app.dependency_overrides[get_storage] = lambda: storage
 
-    client = TestClient(app)
+    yield storage
 
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def client():
+    return TestClient(app)
+
+
+def test_invalid_upload(client, fake_storage):
     response = client.post(
         "/upload/",
         files={
@@ -54,19 +61,11 @@ def test_invalid_upload():
         },
     )
 
-    app.dependency_overrides.clear()
-
     assert response.status_code == 400
     assert fake_storage.save_called is False
 
 
-def test_empty_upload():
-    fake_storage = FakeStorage()
-
-    app.dependency_overrides[get_storage] = lambda: fake_storage
-
-    client = TestClient(app)
-
+def test_empty_upload(client, fake_storage):
     response = client.post(
         "/upload/",
         files={
@@ -78,19 +77,11 @@ def test_empty_upload():
         },
     )
 
-    app.dependency_overrides.clear()
-
     assert response.status_code == 400
     assert fake_storage.save_called is False
 
 
-def test_valid_upload():
-    fake_storage = FakeStorage()
-
-    app.dependency_overrides[get_storage] = lambda: fake_storage
-
-    client = TestClient(app)
-
+def test_valid_upload(client, fake_storage):
     response = client.post(
         "/upload/",
         files={
@@ -102,21 +93,22 @@ def test_valid_upload():
         },
     )
 
-    app.dependency_overrides.clear()
-
     assert response.status_code == 200
     assert fake_storage.save_called is True
     assert fake_storage.saved_filename == "notes.txt"
     assert fake_storage.saved_bytes == b"hello accessflow"
 
+    data = response.json()
 
-def test_large_upload():
-    fake_storage = FakeStorage()
+    assert data["status"] == "success"
+    assert data["error"] is None
+    assert data["data"]["filename"] == "notes.txt"
+    assert data["data"]["content_type"] == "text/plain"
+    assert data["data"]["size_bytes"] == len(b"hello accessflow")
+    assert data["data"]["storage_reference"] == "fake/notes.txt"
 
-    app.dependency_overrides[get_storage] = lambda: fake_storage
 
-    client = TestClient(app)
-
+def test_large_upload(client, fake_storage):
     response = client.post(
         "/upload/",
         files={
@@ -127,8 +119,6 @@ def test_large_upload():
             )
         },
     )
-
-    app.dependency_overrides.clear()
 
     assert response.status_code == 400
     assert fake_storage.save_called is False
