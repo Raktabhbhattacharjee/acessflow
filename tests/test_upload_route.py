@@ -46,7 +46,7 @@ def fake_storage():
 
 @pytest.fixture
 def client():
-    return TestClient(app,raise_server_exceptions=False)
+    return TestClient(app, raise_server_exceptions=False)
 
 
 def test_invalid_upload(client, fake_storage):
@@ -154,3 +154,25 @@ def test_storage_failure(client):
     assert data["status"] == "error"
     assert data["data"] is None
     assert data["error"] == "Internal server error"
+
+
+def test_invalid_upload(client, fake_storage):
+    response = client.post(
+        "/upload/",
+        files={
+            "file": (
+                "virus.exe",
+                b"fake file content",
+                "text/plain",
+            )
+        },
+    )
+
+    assert response.status_code == 400
+    assert fake_storage.save_called is False
+
+    data = response.json()
+
+    assert data["status"] == "error"
+    assert data["data"] is None
+    assert data["error"] is not None
