@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, UploadFile, File
+
 from app.dependencies import get_storage
 from app.storage.base import StorageBackend
 from app.validators.file_validator import validate_file
@@ -15,17 +16,46 @@ async def upload_file(
     file: UploadFile = File(...),
     storage: StorageBackend = Depends(get_storage),
 ):
-    logger.info(f"Upload request received: {file.filename}")
+    logger.info(
+        {
+            "event": "upload_started",
+            "filename": file.filename,
+            "content_type": file.content_type,
+            "storage_backend": settings.storage_backend,
+        }
+    )
 
     validate_file(file)
 
     file_bytes = await file.read()
     size_bytes = len(file_bytes)
-    validate_file(file,size_bytes=size_bytes)
+
+    validate_file(file, size_bytes=size_bytes)
+
     content_type = file.content_type
+
+    logger.info(
+        {
+            "event": "upload_validation_passed",
+            "filename": file.filename,
+            "content_type": content_type,
+            "size_bytes": size_bytes,
+            "storage_backend": settings.storage_backend,
+        }
+    )
+
     storage_reference = await storage.save(file_bytes, file.filename)
 
-    logger.info(f"Upload successful: {file.filename} → {storage_reference}")
+    logger.info(
+        {
+            "event": "upload_succeeded",
+            "filename": file.filename,
+            "content_type": content_type,
+            "size_bytes": size_bytes,
+            "storage_backend": settings.storage_backend,
+            "storage_reference": storage_reference,
+        }
+    )
 
     return success_response(
         {

@@ -33,9 +33,17 @@ def get_logger(name: str) -> logging.Logger:
     logger.setLevel(getattr(logging, log_level, logging.INFO))
 
     if not logger.handlers:
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setFormatter(JsonFormatter())
-        logger.addHandler(handler)
+        formatter = JsonFormatter()
+
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+
+        os.makedirs("logs", exist_ok=True)
+
+        file_handler = logging.FileHandler("logs/accessflow.log")
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
 
     logger.propagate = False
 
